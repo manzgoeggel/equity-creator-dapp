@@ -9,28 +9,40 @@ require('chai')
 
 
 contract('EquityContract', ([alice, bob]) => {
-    let equityContract;
+    let equityContractInstance;
     before(async () => {
         equityContractInstance = await EquityContract.new();
     })
 
-    describe('equity contract test', async () => {
+    describe('equity contract', async () => {
         it('creates a company', async () => {
-            const newCompany = await equityContractInstance.createCompany('Tesla Inc.', false, 1000000, 3);
+            const result = await equityContractInstance.createCompany('Tesla Inc.', false, 100000, 3, { from: alice, value: web3.utils.toWei("0.05", "ether")});
+            //extracts the emitted values from the 'CompanyRegistered' event
+            const { owner, companyId } = await result.logs[0].args;
+            const _owner = await equityContractInstance.companyIdToOwner(companyId);
 
-             truffleAssert.eventEmitted(result, 'CompanyRegistered', (event) => {
-                return event.owner === equityContractInstance.companyToOwner(event.companyId);
-            });
+            //checks if the company owner is stored correctly.
+            assert.equal(owner, _owner);
 
+       
+          
         })
 
+        it('creates a shareholder & transfers shares from company to shareholder', async () => {
+            const company = await equityContractInstance.ownerToCompany(alice);
+            const {companyId} = await company;
+            const result = await equityContractInstance.transferSharesCompanyToShareholder(bob, 5000, companyId, 'lukas steiner', {from: alice});
+
+            const shareholderIndex = await result.logs[0].args.shareholderIndex;
+            const shareholder = await equityContractInstance.companyShareholders(companyId, shareholderIndex);
+
+            //check if the shareholder received his shares
+            assert.equal(shareholder.shareAmount, 5000);
+           
+        })
+    
+     
     })
 
-    // describe('Dapp Token deployment', async () => {
-    //     it('has a name', async () => {
-    //       const name = await dappToken.name()
-    //       assert.equal(name, 'DApp Token')
-    //     })
-    //   })
       
 })    
