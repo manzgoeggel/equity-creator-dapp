@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity >=0.7.0 <0.9.0;
 
-import "./ownable.sol";
+import "./Ownable.sol";
 
 
-contract CompanyCreator is Ownable {
+contract EquityContract is Ownable {
     struct Company {
        string name;
        bool isPublic;
@@ -25,16 +25,17 @@ contract CompanyCreator is Ownable {
     
     uint companyRegistractionFee = 0.05 ether;
     Company[] public companies;
-    mapping (uint => address) companyToOwner;
-    mapping (uint => Shareholder[]) companyShareholders;
+    mapping (uint => address) public companyToOwner;
+    mapping (uint => Shareholder[]) public companyShareholders;
 
-
-    event ShareTransfer(address _previousOwner, address _newOwner, uint companyId, uint _shares);
+    event SharesTransfer(address previousOwner, address newOwner, uint companyId, uint shares);
+    event CompanyRegistered(address owner, string name, uint companyId);
 
     function createCompany(string memory _name, bool _isPublic, uint _shares, uint _sharePrice) public payable {
 
         //send the registration fee to the owner of contract
         assert(msg.value >= companyRegistractionFee);
+
         address payable _owner = payable(owner());
         _owner.transfer(companyRegistractionFee);
 
@@ -42,9 +43,11 @@ contract CompanyCreator is Ownable {
         uint companyId = _generateRandomId(_name);
         companies.push(Company(_name, _isPublic, _shares, _shares, _sharePrice, companyId));
         companyToOwner[companyId] = msg.sender;
+
+        emit CompanyRegistered(msg.sender, _name, companyId);
     }
 
-    function transferShares(address _to, uint _shares, uint _companyId, string memory _shareholderName) external onlyOwnerOf(_companyId) {
+    function transferSharesCompanyToShareholder(address _to, uint _shares, uint _companyId, string memory _shareholderName) external onlyOwnerOf(_companyId) {
         Company storage company = companies[_companyId];
 
         require(company.companyId == _companyId, 'no company found.');
@@ -71,8 +74,9 @@ contract CompanyCreator is Ownable {
             
         ));
         }
-        emit ShareTransfer(msg.sender, _to, _companyId, _shares);
+        emit SharesTransfer(msg.sender, _to, _companyId, _shares);
     }
+
 
     function getMarketCap(uint _companyId) public view returns (uint) {
         Company memory company = companies[_companyId];
